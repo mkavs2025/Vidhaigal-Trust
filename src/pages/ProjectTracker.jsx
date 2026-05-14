@@ -1,40 +1,36 @@
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const ProjectTracker = () => {
   const { t } = useTranslation();
   const [filter, setFilter] = useState('All');
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const statuses = ['All', 'Active', 'Planning', 'Completed'];
 
-  const projects = [
-    {
-      id: 1, name: "City Forest Alpha", status: "Active", progress: 65,
-      startDate: "Jan 2026", targetDate: "Dec 2026", lead: "Ramesh K.",
-      desc: "Creating a dense micro-forest in the heart of the city."
-    },
-    {
-      id: 2, name: "Village Solar Setup", status: "Planning", progress: 10,
-      startDate: "Jun 2026", targetDate: "Mar 2027", lead: "Priya M.",
-      desc: "Installing solar panels for 50 homes in rural areas."
-    },
-    {
-      id: 3, name: "Lake Restoration Phase 1", status: "Completed", progress: 100,
-      startDate: "Jan 2025", targetDate: "Dec 2025", lead: "Suresh S.",
-      desc: "Cleaned and restored the local lake, planting native flora."
-    },
-    {
-      id: 4, name: "Digital Literacy Drive", status: "Active", progress: 40,
-      startDate: "Feb 2026", targetDate: "Aug 2026", lead: "Anita R.",
-      desc: "Teaching basic computer skills to senior citizens."
-    },
-    {
-      id: 5, name: "Women Empowerment Workshop", status: "Active", progress: 55,
-      startDate: "Mar 2026", targetDate: "Sep 2026", lead: "Kavitha D.",
-      desc: "Vocational training for women to start micro-businesses."
-    }
-  ];
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:5000/api/projects');
+        if (!response.ok) {
+          throw new Error('Failed to fetch projects');
+        }
+        const result = await response.json();
+        setProjects(result.data);
+      } catch (err) {
+        setError(err.message);
+        // Fallback to empty or mock if needed, but better to show error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, []);
 
   const filteredProjects = filter === 'All' ? projects : projects.filter(p => p.status === filter);
 
@@ -77,41 +73,58 @@ const ProjectTracker = () => {
             </div>
 
             {/* Project Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredProjects.map(project => (
-                <div key={project.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-text-dark">{project.name}</h3>
-                      <p className="text-sm text-gray-500 mt-1">Lead: <span className="font-medium text-gray-800">{project.lead}</span></p>
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                <p className="mt-4 text-gray-600">Loading projects...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12 text-red-600 bg-red-50 rounded-xl border border-red-100">
+                <p>Error: {error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredProjects.map(project => (
+                  <div key={project._id || project.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow bg-gray-50/50">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-text-dark">{project.name}</h3>
+                        <p className="text-sm text-gray-500 mt-1">Lead: <span className="font-medium text-gray-800">{project.lead}</span></p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(project.status)}`}>
+                        {project.status}
+                      </span>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(project.status)}`}>
-                      {project.status}
-                    </span>
-                  </div>
 
-                  <p className="text-gray-600 text-sm mb-6">{project.desc}</p>
+                    <p className="text-gray-600 text-sm mb-6">{project.desc}</p>
 
-                  <div className="mb-4">
-                    <div className="flex justify-between text-xs font-bold mb-2">
-                      <span className="text-primary">Progress</span>
-                      <span>{project.progress}%</span>
+                    <div className="mb-4">
+                      <div className="flex justify-between text-xs font-bold mb-2">
+                        <span className="text-primary">Progress</span>
+                        <span>{project.progress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${project.progress === 100 ? 'bg-primary' : 'bg-secondary'}`}
+                          style={{ width: `${project.progress}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${project.progress === 100 ? 'bg-primary' : 'bg-secondary'}`}
-                        style={{ width: `${project.progress}%` }}
-                      ></div>
+
+                    <div className="flex justify-between text-xs text-gray-500 mt-4 pt-4 border-t border-gray-200">
+                      <div><span className="font-semibold block text-gray-700">Start Date</span> {project.startDate}</div>
+                      <div className="text-right"><span className="font-semibold block text-gray-700">Target Date</span> {project.targetDate}</div>
                     </div>
                   </div>
-
-                  <div className="flex justify-between text-xs text-gray-500 mt-4 pt-4 border-t border-gray-200">
-                    <div><span className="font-semibold block text-gray-700">Start Date</span> {project.startDate}</div>
-                    <div className="text-right"><span className="font-semibold block text-gray-700">Target Date</span> {project.targetDate}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             {filteredProjects.length === 0 && (
               <div className="text-center py-12 text-gray-500">

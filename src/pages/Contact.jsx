@@ -1,9 +1,47 @@
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
+import { useState } from 'react';
 import { FaMapMarkerAlt, FaPhoneAlt, FaEnvelope, FaClock, FaFacebook, FaTwitter, FaInstagram } from 'react-icons/fa';
 
 const Contact = () => {
   const { t } = useTranslation();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setFormError(null);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send message');
+      }
+
+      setSubmitted(true);
+      setFormData({ name: '', email: '', subject: '', message: '' });
+    } catch (err) {
+      setFormError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -66,32 +104,93 @@ const Contact = () => {
             {/* Contact Form */}
             <div className="lg:col-span-2 bg-white p-10 rounded-2xl shadow-lg border border-gray-100">
               <h3 className="text-3xl font-extrabold text-text-dark mb-8">Send Us a Message</h3>
-              <form className="space-y-6" onSubmit={e => e.preventDefault()}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="contact-name" className="block text-sm font-semibold text-gray-700 mb-2">Your Name</label>
-                    <input id="contact-name" type="text" className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50" placeholder="John Doe" />
+              {submitted ? (
+                <div className="bg-light-green p-8 rounded-xl text-center border-2 border-primary">
+                  <div className="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                    ✓
                   </div>
-                  <div>
-                    <label htmlFor="contact-email" className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                    <input id="contact-email" type="email" className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50" placeholder="john@example.com" />
+                  <h4 className="text-2xl font-bold text-primary mb-2">Message Sent!</h4>
+                  <p className="text-gray-700">Thank you for reaching out. We will get back to you shortly.</p>
+                  <button 
+                    onClick={() => setSubmitted(false)}
+                    className="mt-6 text-primary font-bold hover:underline"
+                  >
+                    Send another message
+                  </button>
+                </div>
+              ) : (
+                <form className="space-y-6" onSubmit={handleSubmit}>
+                  {formError && (
+                    <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100">
+                      {formError}
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="contact-name" className="block text-sm font-semibold text-gray-700 mb-2">Your Name</label>
+                      <input 
+                        id="contact-name" 
+                        type="text" 
+                        required
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50" 
+                        placeholder="John Doe" 
+                        value={formData.name}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="contact-email" className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                      <input 
+                        id="contact-email" 
+                        type="email" 
+                        required
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50" 
+                        placeholder="john@example.com" 
+                        value={formData.email}
+                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label htmlFor="contact-subject" className="block text-sm font-semibold text-gray-700 mb-2">Subject</label>
-                  <input id="contact-subject" type="text" className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50" placeholder="How can we help you?" />
-                </div>
+                  <div>
+                    <label htmlFor="contact-subject" className="block text-sm font-semibold text-gray-700 mb-2">Subject</label>
+                    <input 
+                      id="contact-subject" 
+                      type="text" 
+                      required
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50" 
+                      placeholder="How can we help you?" 
+                      value={formData.subject}
+                      onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                    />
+                  </div>
 
-                <div>
-                  <label htmlFor="contact-message" className="block text-sm font-semibold text-gray-700 mb-2">Message</label>
-                  <textarea id="contact-message" rows="6" className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50 resize-none" placeholder="Write your message here..."></textarea>
-                </div>
+                  <div>
+                    <label htmlFor="contact-message" className="block text-sm font-semibold text-gray-700 mb-2">Message</label>
+                    <textarea 
+                      id="contact-message" 
+                      rows="6" 
+                      required
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary outline-none bg-gray-50 resize-none" 
+                      placeholder="Write your message here..."
+                      value={formData.message}
+                      onChange={(e) => setFormData({...formData, message: e.target.value})}
+                    ></textarea>
+                  </div>
 
-                <button className="px-10 py-4 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-green-800 transition-colors">
-                  Send Message
-                </button>
-              </form>
+                  <button 
+                    disabled={submitting}
+                    className="px-10 py-4 bg-primary text-white font-bold rounded-xl shadow-lg hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></span>
+                        Sending...
+                      </>
+                    ) : 'Send Message'}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
 
